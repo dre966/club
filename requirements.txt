@@ -7,6 +7,3 @@ starlette==0.36.3
 
 # Database
 mysql-connector-python==8.2.0
-
-# PDF export
-fpdf2==2.8.9
