@@ -308,20 +308,23 @@ class App(tk.Tk):
             return
         hostel = self.hostel_var.get().strip()
         phone = self.phone_var.get().strip()
-        souvenirs_paid = self.souvenirs_var.get()
-        souvenir_paid = self.souvenir_var.get()
-        if not hostel and not souvenir_paid:
-            messagebox.showwarning("Missing info", "Enter hostel or check Cyber Club souvenir.")
+        souvenir = self.souvenir_var.get()
+        if not hostel and not souvenir:
+            messagebox.showwarning("Missing info", "Enter hostel or check Souvenir.")
             return
         
         s = self.selected
         # Check if already registered for either
         has_hostel = s.get("hostel")
-        has_souvenir = s.get("souvenir_paid")
+        has_souvenir = s.get("souvenir_paid") or s.get("souvenirs_paid")
         if (has_hostel or has_souvenir) and not messagebox.askyesno(
                 "Already registered", 
                 f"{s['fullName']} already has registration. Update?"):
             return
+        
+        # Map single souvenir checkbox to both DB fields
+        souvenir_paid = souvenir
+        souvenirs_paid = souvenir
         
         rec = {
             "id": s["id"],
@@ -333,7 +336,7 @@ class App(tk.Tk):
             "hostel": hostel,
             "souvenirs_paid": souvenirs_paid,
             "souvenir_paid": souvenir_paid,
-            "source": "both" if (hostel and souvenir_paid) else ("hostel" if hostel else "cyber_club"),
+            "source": "both" if (hostel and souvenir) else ("hostel" if hostel else "cyber_club"),
             "registeredAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         }
         
