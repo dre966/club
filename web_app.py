@@ -56,9 +56,15 @@ def init_db():
             `registeredAt` DATETIME
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """)
-    # Indexes
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_fullName ON `cybersecurity_registrations`(`fullName`)")
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_year ON `cybersecurity_registrations`(`year_level`)")
+    # Indexes - MySQL doesn't support IF NOT EXISTS for indexes in all versions
+    try:
+        cur.execute("CREATE INDEX idx_fullName ON `cybersecurity_registrations`(`fullName`)")
+    except Error:
+        pass
+    try:
+        cur.execute("CREATE INDEX idx_year ON `cybersecurity_registrations`(`year_level`)")
+    except Error:
+        pass
     conn.commit()
     cur.close()
     conn.close()
@@ -161,7 +167,7 @@ async def startup():
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request, q: str = ""):
     students = search_students(q) if q else []
-    return templates.TemplateResponse(request,"index.html", {
+    return templates.TemplateResponse("index.html", {
         "request": request,
         "students": students,
         "query": q,
