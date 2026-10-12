@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <form method="GET" class="row g-3 align-items-end">
+                    <div class="col-md-8">
+                        <label class="form-label fw-bold">Search Cyber Security Students</label>
+                        <div class="input-group">
+                            <input type="text" name="q" class="form-control form-control-lg" 
+                                   placeholder="Name, Ref No, Phone, Email..." 
+                                   value="{{ query }}" autofocus>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-search"></i> Search
+                            </button>
+                            {% if query %}
+                            <a href="/" class="btn btn-outline-secondary">Clear</a>
+                            {% endif %}
+                        </div>
+                        <div class="form-text">
+                            <i class="bi bi-info-circle"></i> Multi-word search (any order). Phone: 050... or +233...
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <div class="d-inline-flex gap-2">
+                            <a href="/api/stats" target="_blank" class="btn btn-outline-info">
+                                <i class="bi bi-graph-up"></i> Stats
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if query %}
+<div class="alert alert-info d-flex justify-content-between align-items-center mb-4">
+    <span>{{ count }}{% if count == 100 %}+{% endif %} result{{ 's' if count != 1 else '' }} for "<strong>{{ query }}</strong>"</span>
+    {% if count == 100 %}
+    <span class="badge bg-warning text-dark">Limited to 100 results</span>
+    {% endif %}
+</div>
+{% endif %}
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        {% if students %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 30%">Name</th>
+                        <th style="width: 15%">Ref No</th>
+                        <th style="width: 30%">Programme</th>
+                        <th style="width: 15%">Phone</th>
+                        <th style="width: 10%">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in students %}
+                    <tr>
+                        <td>
+                            <a href="/student/{{ s.id }}" class="text-decoration-none fw-medium">
+                                {{ s.fullName }}
+                            </a>
+                        </td>
+                        <td>{{ s.formReferenceNo }}</td>
+                        <td>{{ s.programme }}</td>
+                        <td>{{ s.regPhone or s.phoneNumber }}</td>
+                        <td>
+                            {% if s.year_level %}
+                            <span class="badge bg-success status-badge">
+                                <i class="bi bi-check-circle"></i> Year {{ s.year_level }}
+                                {% if s.tshirt_paid %}
+                                <i class="bi bi-shirt"></i>
+                                {% endif %}
+                            </span>
+                            {% else %}
+                            <span class="badge bg-warning text-dark status-badge">
+                                <i class="bi bi-clock"></i> Not Registered
+                            </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-people fs-1 text-muted"></i>
+            <h5 class="text-muted mt-3">{% if query %}No students found{% else %}Search to find Cyber Security students{% endif %}</h5>
+            {% if query %}
+            <p class="text-muted">Try different search terms</p>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

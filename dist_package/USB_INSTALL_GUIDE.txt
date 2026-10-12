@@ -1,0 +1,120 @@
+====================================================================
+HOSTEL REGISTRATION SYSTEM - USB INSTALL GUIDE
+====================================================================
+
+DATABASE: Railway MySQL (Cloud)
+-------------------------------
+The app is configured for Railway MySQL by default. You need the PUBLIC
+ENDPOINT from Railway dashboard:
+
+1. Go to Railway.app → Your Project → MySQL Service
+2. Click "Connect" tab → Copy "Public Endpoint"
+   Format: gatewayXX.region.railway.app:PORT
+3. On PC2, set this environment variable before running:
+
+   CMD:
+     set DB_HOST=gatewayXX.region.railway.app
+     set DB_PORT=PORT
+   
+   PowerShell:
+     $env:DB_HOST="gatewayXX.region.railway.app"
+     $env:DB_PORT="PORT"
+
+Default credentials (already in app):
+   DB_USER=root
+   DB_PASSWORD=qusAYhbZUedrXZWMTbtNXNtFoddixXvT
+   SOURCE_DB=railway
+   REG_DB=railway
+
+TO USE LOCAL MYSQL INSTEAD:
+   set DB_HOST=localhost
+   set DB_USER=root
+   set DB_PASSWORD=your_local_password
+   set SOURCE_DB=umatdb
+   set REG_DB=hostel_db
+
+
+STEP 1: PREPARE USB DRIVE (on PC1 - your current PC)
+-----------------------------------------------------
+1. Copy the entire folder "students_info" (or just the extracted package 
+   contents) to your USB drive.
+
+   Required files on USB:
+   - hostel_registration.py
+   - init_database.sql
+   - requirements.txt
+   - run.py
+   - run_hostel_registration.bat
+   - run_hostel_registration.ps1
+   - README.md
+   - (optional) registered_students.json
+
+   OR just copy: hostel_registration_package.zip
+
+
+STEP 2: ON PC2 (target computer)
+--------------------------------
+
+OPTION A: Using the Python runner (simplest)
+1. Plug USB into PC2
+2. Copy the folder from USB to PC2 (e.g., C:\HostelReg)
+3. Open Command Prompt (cmd) or PowerShell in that folder
+4. Set Railway endpoint (see DATABASE section above)
+5. Run:
+   python run.py
+
+   That's it - it installs Python packages, connects to Railway, and opens the app.
+
+
+OPTION B: Using PowerShell script
+1. Plug USB into PC2
+2. Copy folder to PC2
+3. Set Railway endpoint (see DATABASE section above)
+4. Right-click run_hostel_registration.ps1 -> "Run with PowerShell"
+   (Or: powershell -ExecutionPolicy Bypass -File run_hostel_registration.ps1)
+
+
+OPTION C: Using Batch file
+1. Plug USB into PC2
+2. Copy folder to PC2
+3. Set Railway endpoint (see DATABASE section above)
+4. Double-click run_hostel_registration.bat
+
+
+OPTION D: Manual (if scripts fail)
+1. Install Python 3.8+ from python.org (check "Add to PATH")
+2. Set Railway endpoint environment variables (see DATABASE section)
+3. Open cmd in the folder and run:
+   pip install -r requirements.txt
+   python hostel_registration.py
+
+
+STEP 3: FIRST RUN NOTES
+-----------------------
+- Railway MySQL must be running (check Railway dashboard)
+- The app uses database "railway" with tables:
+    admitted_students   (source - your scraper fills this)
+    registered_students (registration - this app creates/uses this)
+- On first run, search will be empty until you run your scraper to 
+  populate admitted_students
+
+
+TROUBLESHOOTING
+---------------
+"Python not found" -> Install Python from python.org, check "Add to PATH"
+"MySQL connection failed" -> Check Railway public endpoint, ensure service is running
+"ModuleNotFoundError: mysql.connector" -> Run: pip install mysql-connector-python
+"No students found" -> Run your scraper first to fill admitted_students
+"Access denied" -> Check DB_PASSWORD matches Railway root password
+
+
+FILES NEEDED ON USB (minimum)
+-----------------------------
+hostel_registration.py
+init_database.sql
+requirements.txt
+run.py
+
+
+That's it! The run.py handles everything automatically.
+====================================================================

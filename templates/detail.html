@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-person-badge"></i> {{ student.fullName }}</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Reference No</label>
+                        <div class="fw-medium">{{ student.formReferenceNo }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Programme</label>
+                        <div class="fw-medium">{{ student.programme }}</div>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Email</label>
+                        <div>{{ student.email }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Phone</label>
+                        <div>{{ student.regPhone or student.phoneNumber }}</div>
+                    </div>
+                </div>
+                
+                {% if student.year_level %}
+                <div class="alert alert-success d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <strong>Registered:</strong> Year {{ student.year_level }}
+                        {% if student.tshirt_paid %}
+                        <span class="badge bg-warning text-dark ms-2"><i class="bi bi-shirt"></i> T-Shirt Paid</span>
+                        {% endif %}
+                    </div>
+                    <span class="text-muted small">{{ student.registeredAt if student.registeredAt is defined else '' }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-pencil-square"></i> {% if student.year_level %}Update{% else %}Register{% endif %} for Cybersecurity Club</h5>
+            </div>
+            <div class="card-body">
+                {% if error %}
+                <div class="alert alert-danger">{{ error }}</div>
+                {% endif %}
+                {% if saved %}
+                <div class="alert alert-success">Registration saved successfully!</div>
+                {% endif %}
+
+                <form method="POST" action="/register">
+                    <input type="hidden" name="student_id" value="{{ student.id }}">
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Year/Level <span class="text-danger">*</span></label>
+                            <select name="year_level" class="form-select" required>
+                                <option value="">Select Year</option>
+                                <option value="100" {% if student.year_level == "100" %}selected{% endif %}>100 Level</option>
+                                <option value="200" {% if student.year_level == "200" %}selected{% endif %}>200 Level</option>
+                                <option value="300" {% if student.year_level == "300" %}selected{% endif %}>300 Level</option>
+                                <option value="400" {% if student.year_level == "400" %}selected{% endif %}>400 Level</option>
+                                <option value="500" {% if student.year_level == "500" %}selected{% endif %}>500 Level</option>
+                                <option value="Other" {% if student.year_level == "Other" %}selected{% endif %}>Other</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Phone</label>
+                            <input type="tel" name="phone" class="form-control"
+                                   value="{{ student.regPhone or student.phoneNumber or '' }}"
+                                   placeholder="0501234567">
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <div class="form-check mt-4">
+                                <input class="form-check-input" type="checkbox" name="tshirt_paid" id="tshirt_paid"
+                                       {% if student.tshirt_paid %}checked{% endif %}>
+                                <label class="form-check-label fw-bold" for="tshirt_paid">
+                                    <i class="bi bi-shirt"></i> T-Shirt Paid
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="bi bi-save"></i> {% if student.year_level %}Update{% else %}Register{% endif %}
+                        </button>
+                        <a href="/" class="btn btn-secondary btn-lg">Back to Search</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
