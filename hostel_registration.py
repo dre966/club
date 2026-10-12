@@ -19,9 +19,10 @@ DB_CONFIG = {
 }
 SOURCE_DB = os.getenv("SOURCE_DB", "railway")
 REG_DB = os.getenv("REG_DB", "railway")
-JSON_FILE = "cybersecurity_registrations.json"
+UNIFIED_TABLE = "registration_rectification"  # Unified table
+JSON_FILE = "registration_rectification.json"
 PROGRAMME_FILTER = ""  # "" = all students
-APP_TITLE = "Cybersecurity Club Registration"
+APP_TITLE = "Cybersecurity Club & Hostel Registration"
 
 
 # ---------- Database ----------
@@ -32,20 +33,10 @@ def get_conn():
 def init_db():
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute(f"CREATE DATABASE IF NOT EXISTS `{REG_DB}`")
-    cur.execute(f"""
-        CREATE TABLE IF NOT EXISTS `{REG_DB}`.`cybersecurity_registrations` (
-            `id` VARCHAR(255) PRIMARY KEY,
-            `formReferenceNo` VARCHAR(255),
-            `fullName` VARCHAR(255),
-            `email` VARCHAR(255),
-            `programme` VARCHAR(255),
-            `phoneNumber` VARCHAR(50),
-            `year_level` VARCHAR(50),
-            `souvenir_paid` BOOLEAN DEFAULT FALSE,
-            `registeredAt` DATETIME
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-    """)
+    # Table already exists, just verify
+    cur.execute(f"SHOW TABLES LIKE '{UNIFIED_TABLE}'")
+    if not cur.fetchone():
+        print(f"Warning: {UNIFIED_TABLE} not found, run create_unified.py first")
     conn.commit()
     cur.close()
     conn.close()
@@ -58,9 +49,10 @@ def load_all_students():
     query = f"""
         SELECT a.id, a.formReferenceNo, a.fullName, a.email, a.programme,
                a.phoneNumber, a.hallName, a.affiliatedHallName,
-               r.year_level, r.phoneNumber AS regPhone, r.tshirt_paid, r.registeredAt
+               r.hostel, r.souvenirs_paid, r.souvenir_paid, r.source,
+               r.phoneNumber AS regPhone, r.registeredAt
         FROM `{SOURCE_DB}`.`admitted_students` a
-        LEFT JOIN `{REG_DB}`.`cybersecurity_registrations` r ON r.id = a.id
+        LEFT JOIN `{REG_DB}`.`{UNIFIED_TABLE}` r ON r.id = a.id
     """
     params = []
     if PROGRAMME_FILTER:
@@ -80,16 +72,20 @@ def save_registration(rec):
     conn = get_conn()
     cur = conn.cursor()
     cur.execute(f"""
-        INSERT INTO `{REG_DB}`.`cybersecurity_registrations`
-        (id, formReferenceNo, fullName, email, programme, phoneNumber, year_level, tshirt_paid, registeredAt)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO `{REG_DB}`.`{UNIFIED_TABLE}`
+        (id, formReferenceNo, fullName, email, programme, phoneNumber,
+         hostel, souvenirs_paid, souvenir_paid, registeredAt, source)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON DUPLICATE KEY UPDATE
             phoneNumber = VALUES(phoneNumber),
-            year_level = VALUES(year_level),
-            tshirt_paid = VALUES(tshirt_paid),
+            hostel = VALUES(hostel),
+            souvenirs_paid = VALUES(souvenirs_paid),
+            souvenir_paid = VALUES(souvenir_paid),
             registeredAt = VALUES(registeredAt)
     """, (rec["id"], rec["formReferenceNo"], rec["fullName"], rec["email"],
-          rec["programme"], rec["phoneNumber"], rec["year_level"], rec["tshirt_paid"], rec["registeredAt"]))
+          rec["programme"], rec["phoneNumber"],
+          rec.get("hostel"), rec.get("souvenirs_paid", False), rec.get("souvenir_paid", False),
+          rec["registeredAt"], rec.get("source", "hostel")))
     conn.commit()
     cur.close()
     conn.close()
@@ -171,7 +167,7 @@ class App(tk.Tk):
         # Top bar
         top = ttk.Frame(self, padding=10)
         top.pack(fill="x")
-        ttk.Label(top, text="Search Cyber Security Students (name / ref / phone / email):").pack(side="left")
+        ttk.Label(top, text="Search All Students (name / ref / phone / email):").pack(side="left")
         self.search_var = tk.StringVar()
         entry = ttk.Entry(top, textvariable=self.search_var, width=50)
         entry.pack(side="left", padx=8)
@@ -201,24 +197,27 @@ class App(tk.Tk):
         self.tree.bind("<<TreeviewSelect>>", self.on_select)
         
         # Registration form
-        form = ttk.LabelFrame(self, text="Register selected student for Cybersecurity Club", padding=10)
+        form = ttk.LabelFrame(self, text="Register selected student (Hostel & Cyber Club)", padding=10)
         form.pack(fill="x", padx=10, pady=(0,10))
         
         self.sel_label = ttk.Label(form, text="No student selected")
         self.sel_label.grid(row=0, column=0, columnspan=6, sticky="w", pady=(0, 8))
         
-        ttk.Label(form, text="Year/Level:").grid(row=1, column=0, sticky="w")
-        self.year_var = tk.StringVar()
-        ttk.Combobox(form, textvariable=self.year_var, values=["100", "200", "300", "400", "500", "Other"], width=28).grid(row=1, column=1, padx=8)
+        ttk.Label(form, text="Hostel:").grid(row=1, column=0, sticky="w")
+        self.hostel_var = tk.StringVar()
+        ttk.Entry(form, textvariable=self.hostel_var, width=28).grid(row=1, column=1, padx=8)
         
         ttk.Label(form, text="Phone:").grid(row=1, column=2, sticky="w")
         self.phone_var = tk.StringVar()
         ttk.Entry(form, textvariable=self.phone_var, width=22).grid(row=1, column=3, padx=8)
         
-        self.tshirt_var = tk.BooleanVar()
-        ttk.Checkbutton(form, text="T-Shirt Paid", variable=self.tshirt_var).grid(row=1, column=4, padx=8)
+        self.souvenirs_var = tk.BooleanVar()
+        ttk.Checkbutton(form, text="Hostel Souvenir Paid", variable=self.souvenirs_var).grid(row=1, column=4, padx=8)
         
-        ttk.Button(form, text="Register / Update", command=self.register).grid(row=1, column=5, padx=8)
+        self.souvenir_var = tk.BooleanVar()
+        ttk.Checkbutton(form, text="Cyber Club Souvenir Paid", variable=self.souvenir_var).grid(row=1, column=5, padx=8)
+        
+        ttk.Button(form, text="Register / Update", command=self.register).grid(row=1, column=6, padx=8)
         
         self.selected = None
         try:
@@ -303,25 +302,31 @@ class App(tk.Tk):
             return
         s = self.results[sel[0]]
         self.selected = s
-        self.sel_label.config(text=f"{s['fullName']}  |  Ref: {s['formReferenceNo']}  |  {s['programme']}")
+        self.sel_label.config(text=f"{s['fullName']}  |  Ref: {s['formReferenceNo']}  |  {s['programme']}  |  {s.get('source','')}")
         self.phone_var.set(s.get("regPhone") or s.get("phoneNumber") or "")
-        self.year_var.set(s.get("year_level") or "")
-        self.tshirt_var.set(bool(s.get("tshirt_paid", False)))
+        self.hostel_var.set(s.get("hostel") or s.get("hallName") or s.get("affiliatedHallName") or "")
+        self.souvenirs_var.set(bool(s.get("souvenirs_paid", False)))
+        self.souvenir_var.set(bool(s.get("souvenir_paid", False)))
 
     def register(self):
         if not self.selected:
             messagebox.showwarning("No student", "Select a student first.")
             return
-        year = self.year_var.get().strip()
+        hostel = self.hostel_var.get().strip()
         phone = self.phone_var.get().strip()
-        tshirt_paid = self.tshirt_var.get()
-        if not year:
-            messagebox.showwarning("Missing year", "Select the year/level.")
+        souvenirs_paid = self.souvenirs_var.get()
+        souvenir_paid = self.souvenir_var.get()
+        if not hostel and not souvenir_paid:
+            messagebox.showwarning("Missing info", "Enter hostel or check Cyber Club souvenir.")
             return
         
         s = self.selected
-        if s.get("year_level") and not messagebox.askyesno(
-                "Already registered", f"{s['fullName']} is already registered (Year {s['year_level']}). Update?"):
+        # Check if already registered for either
+        has_hostel = s.get("hostel")
+        has_souvenir = s.get("souvenir_paid")
+        if (has_hostel or has_souvenir) and not messagebox.askyesno(
+                "Already registered", 
+                f"{s['fullName']} already has registration. Update?"):
             return
         
         rec = {
@@ -331,8 +336,10 @@ class App(tk.Tk):
             "email": s["email"],
             "programme": s["programme"],
             "phoneNumber": phone,
-            "year_level": year,
-            "tshirt_paid": tshirt_paid,
+            "hostel": hostel,
+            "souvenirs_paid": souvenirs_paid,
+            "souvenir_paid": souvenir_paid,
+            "source": "both" if (hostel and souvenir_paid) else ("hostel" if hostel else "cyber_club"),
             "registeredAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         }
         
@@ -344,18 +351,25 @@ class App(tk.Tk):
             return
         
         # Update local cache immediately
-        s["year_level"] = year
+        s["hostel"] = hostel
         s["regPhone"] = phone
-        s["tshirt_paid"] = tshirt_paid
+        s["souvenirs_paid"] = souvenirs_paid
+        s["souvenir_paid"] = souvenir_paid
+        s["source"] = rec["source"]
         s["registeredAt"] = rec["registeredAt"]
         
         # Refresh UI
-        messagebox.showinfo("Saved", f"{rec['fullName']} registered for Cybersecurity Club (Year {year}).")
+        msg = []
+        if hostel: msg.append(f"Hostel: {hostel}")
+        if souvenir_paid: msg.append("Cyber Club Souvenir")
+        if souvenirs_paid: msg.append("Hostel Souvenir")
+        messagebox.showinfo("Saved", f"{rec['fullName']} - {', '.join(msg)} saved.")
         self.selected = None
         self.sel_label.config(text="No student selected")
-        self.year_var.set("")
+        self.hostel_var.set("")
         self.phone_var.set("")
-        self.tshirt_var.set(False)
+        self.souvenirs_var.set(False)
+        self.souvenir_var.set(False)
         self.do_search()
 
 

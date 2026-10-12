@@ -29,8 +29,9 @@ DB_CONFIG = {
 }
 SOURCE_DB = os.getenv("SOURCE_DB", "railway")
 REG_DB = os.getenv("REG_DB", "railway")
+UNIFIED_TABLE = "registration_rectification"
 PROGRAMME_FILTER = ""  # "" = all students
-APP_TITLE = "Cybersecurity Club Registration"
+APP_TITLE = "Hostel & Cyber Club Registration"
 
 
 # ---------- Database ----------
@@ -41,28 +42,10 @@ def get_conn():
 def init_db():
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute(f"CREATE DATABASE IF NOT EXISTS `{REG_DB}`")
-    cur.execute(f"""
-        CREATE TABLE IF NOT EXISTS `{REG_DB}`.`cybersecurity_registrations` (
-            `id` VARCHAR(255) PRIMARY KEY,
-            `formReferenceNo` VARCHAR(255),
-            `fullName` VARCHAR(255),
-            `email` VARCHAR(255),
-            `programme` VARCHAR(255),
-            `phoneNumber` VARCHAR(50),
-            `year_level` VARCHAR(50),
-            `souvenir_paid` BOOLEAN DEFAULT FALSE,
-            `registeredAt` DATETIME
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-    """)
-    try:
-        cur.execute("CREATE INDEX idx_fullName ON `cybersecurity_registrations`(`fullName`)")
-    except Error:
-        pass
-    try:
-        cur.execute("CREATE INDEX idx_year ON `cybersecurity_registrations`(`year_level`)")
-    except Error:
-        pass
+    # Table already created by create_unified.py - just verify
+    cur.execute(f"SHOW TABLES LIKE '{UNIFIED_TABLE}'")
+    if not cur.fetchone():
+        print(f"Warning: {UNIFIED_TABLE} not found")
     conn.commit()
     cur.close()
     conn.close()
@@ -90,9 +73,10 @@ def search_students(text: str):
     cur.execute(f"""
         SELECT a.id, a.formReferenceNo, a.fullName, a.email, a.programme,
                a.phoneNumber, a.hallName, a.affiliatedHallName,
-               r.year_level, r.phoneNumber AS regPhone, r.souvenir_paid, r.registeredAt
+               r.hostel, r.souvenirs_paid, r.souvenir_paid, r.source,
+               r.phoneNumber AS regPhone, r.registeredAt
         FROM `{SOURCE_DB}`.`admitted_students` a
-        LEFT JOIN `{REG_DB}`.`cybersecurity_registrations` r ON r.id = a.id
+        LEFT JOIN `{REG_DB}`.`{UNIFIED_TABLE}` r ON r.id = a.id
         WHERE {where_clause}
         ORDER BY (a.formReferenceNo = %s) DESC,
                  (a.fullName LIKE %s) DESC,
@@ -111,9 +95,10 @@ def get_student(student_id: str):
     cur.execute(f"""
         SELECT a.id, a.formReferenceNo, a.fullName, a.email, a.programme,
                a.phoneNumber, a.hallName, a.affiliatedHallName,
-               r.year_level, r.phoneNumber AS regPhone, r.souvenir_paid, r.registeredAt
+               r.hostel, r.souvenirs_paid, r.souvenir_paid, r.source,
+               r.phoneNumber AS regPhone, r.registeredAt
         FROM `{SOURCE_DB}`.`admitted_students` a
-        LEFT JOIN `{REG_DB}`.`cybersecurity_registrations` r ON r.id = a.id
+        LEFT JOIN `{REG_DB}`.`{UNIFIED_TABLE}` r ON r.id = a.id
         WHERE a.id = %s
     """, (student_id,))
     row = cur.fetchone()
@@ -126,16 +111,20 @@ def save_registration(rec: dict):
     conn = get_conn()
     cur = conn.cursor()
     cur.execute(f"""
-        INSERT INTO `{REG_DB}`.`cybersecurity_registrations`
-        (id, formReferenceNo, fullName, email, programme, phoneNumber, year_level, souvenir_paid, registeredAt)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO `{REG_DB}`.`{UNIFIED_TABLE}`
+        (id, formReferenceNo, fullName, email, programme, phoneNumber,
+         hostel, souvenirs_paid, souvenir_paid, registeredAt, source)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON DUPLICATE KEY UPDATE
             phoneNumber = VALUES(phoneNumber),
-            year_level = VALUES(year_level),
+            hostel = VALUES(hostel),
+            souvenirs_paid = VALUES(souvenirs_paid),
             souvenir_paid = VALUES(souvenir_paid),
             registeredAt = VALUES(registeredAt)
     """, (rec["id"], rec["formReferenceNo"], rec["fullName"], rec["email"],
-          rec["programme"], rec["phoneNumber"], rec["year_level"], rec["souvenir_paid"], rec["registeredAt"]))
+          rec["programme"], rec["phoneNumber"],
+          rec.get("hostel"), rec.get("souvenirs_paid", False), rec.get("souvenir_paid", False),
+          rec["registeredAt"], rec.get("source", "web")))
     conn.commit()
     cur.close()
     conn.close()
@@ -194,19 +183,20 @@ async def student_detail(request: Request, student_id: str):
 async def register(
     request: Request,
     student_id: str = Form(...),
-    year_level: str = Form(...),
+    hostel: str = Form(""),
     phone: str = Form(""),
+    souvenirs_paid: bool = Form(False),
     souvenir_paid: bool = Form(False)
 ):
     student = get_student(student_id)
     if not student:
         raise HTTPException(404, "Student not found")
 
-    if not year_level.strip():
+    if not hostel.strip() and not souvenir_paid:
         return templates.TemplateResponse("detail.html", {
             "request": request,
             "student": student,
-            "error": "Year/Level is required",
+            "error": "Enter hostel or check Cyber Club souvenir",
             "app_title": APP_TITLE
         })
 
@@ -217,8 +207,10 @@ async def register(
         "email": student["email"],
         "programme": student["programme"],
         "phoneNumber": phone or student["regPhone"] or student["phoneNumber"] or "",
-        "year_level": year_level.strip(),
+        "hostel": hostel.strip(),
+        "souvenirs_paid": souvenirs_paid,
         "souvenir_paid": souvenir_paid,
+        "source": "both" if (hostel and souvenir_paid) else ("hostel" if hostel else "cyber_club"),
         "registeredAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
 
@@ -239,15 +231,17 @@ async def register(
 async def stats():
     conn = get_conn()
     cur = conn.cursor(dictionary=True)
-    cur.execute(f"SELECT COUNT(*) as total FROM `{REG_DB}`.`cybersecurity_registrations`")
+    cur.execute(f"SELECT COUNT(*) as total FROM `{REG_DB}`.`{UNIFIED_TABLE}`")
     total = cur.fetchone()["total"]
-    cur.execute(f"SELECT COUNT(*) as paid FROM `{REG_DB}`.`cybersecurity_registrations` WHERE souvenir_paid = 1")
-    paid = cur.fetchone()["paid"]
-    cur.execute(f"SELECT year_level, COUNT(*) as cnt FROM `{REG_DB}`.`cybersecurity_registrations` GROUP BY year_level")
-    by_year = {row["year_level"]: row["cnt"] for row in cur.fetchall()}
+    cur.execute(f"SELECT COUNT(*) as hostel FROM `{REG_DB}`.`{UNIFIED_TABLE}` WHERE hostel IS NOT NULL AND hostel != ''")
+    hostel = cur.fetchone()["hostel"]
+    cur.execute(f"SELECT COUNT(*) as souvenirs FROM `{REG_DB}`.`{UNIFIED_TABLE}` WHERE souvenirs_paid = 1")
+    souvenirs = cur.fetchone()["souvenirs"]
+    cur.execute(f"SELECT COUNT(*) as cyber FROM `{REG_DB}`.`{UNIFIED_TABLE}` WHERE souvenir_paid = 1")
+    cyber = cur.fetchone()["cyber"]
     cur.close()
     conn.close()
-    return {"total_registered": total, "souvenir_paid": paid, "by_year": by_year}
+    return {"total_registered": total, "hostel": hostel, "souvenirs_paid": souvenirs, "souvenir_paid": cyber}
 
 
 @app.get("/health")

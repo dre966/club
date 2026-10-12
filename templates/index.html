@@ -7,7 +7,7 @@
             <div class="card-body">
                 <form hx-get="/" hx-trigger="input changed delay:150ms, search" hx-target="#results" class="row g-3 align-items-end">
                     <div class="col-md-8">
-                        <label class="form-label fw-bold">Search Cyber Security Students</label>
+                        <label class="form-label fw-bold">Search All Students</label>
                         <div class="input-group">
                             <input type="text" name="q" class="form-control form-control-lg" 
                                    placeholder="Name, Ref No, Phone, Email..." 
@@ -68,11 +68,16 @@
                         <td>{{ s.programme }}</td>
                         <td>{{ s.regPhone or s.phoneNumber }}</td>
                         <td>
-                            {% if s.year_level %}
+                            {% if s.hostel or s.souvenir_paid %}
                             <span class="badge bg-success status-badge">
-                                <i class="bi bi-check-circle"></i> Year {{ s.year_level }}
-                                {% if s.souvenir_paid %}
+                                {% if s.hostel %}
+                                <i class="bi bi-house"></i> {{ s.hostel }}
+                                {% if s.souvenirs_paid %}
                                 <i class="bi bi-gift"></i>
+                                {% endif %}
+                                {% endif %}
+                                {% if s.souvenir_paid %}
+                                <i class="bi bi-gift"></i> Cyber Club
                                 {% endif %}
                             </span>
                             {% else %}
@@ -89,7 +94,7 @@
         {% else %}
         <div class="text-center py-5">
             <i class="bi bi-people fs-1 text-muted"></i>
-            <h5 class="text-muted mt-3">{% if query %}No students found{% else %}Search to find Cyber Security students{% endif %}</h5>
+            <h5 class="text-muted mt-3">{% if query %}No students found{% else %}Search to find students{% endif %}</h5>
             {% if query %}
             <p class="text-muted">Try different search terms</p>
             {% endif %}
