@@ -51,7 +51,7 @@ def init_db():
             `programme` VARCHAR(255),
             `phoneNumber` VARCHAR(50),
             `year_level` VARCHAR(50),
-            `tshirt_paid` BOOLEAN DEFAULT FALSE,
+            `souvenir_paid` BOOLEAN DEFAULT FALSE,
             `registeredAt` DATETIME
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """)
@@ -90,7 +90,7 @@ def search_students(text: str):
     cur.execute(f"""
         SELECT a.id, a.formReferenceNo, a.fullName, a.email, a.programme,
                a.phoneNumber, a.hallName, a.affiliatedHallName,
-               r.year_level, r.phoneNumber AS regPhone, r.tshirt_paid, r.registeredAt
+               r.year_level, r.phoneNumber AS regPhone, r.souvenir_paid, r.registeredAt
         FROM `{SOURCE_DB}`.`admitted_students` a
         LEFT JOIN `{REG_DB}`.`cybersecurity_registrations` r ON r.id = a.id
         WHERE {where_clause}
@@ -111,7 +111,7 @@ def get_student(student_id: str):
     cur.execute(f"""
         SELECT a.id, a.formReferenceNo, a.fullName, a.email, a.programme,
                a.phoneNumber, a.hallName, a.affiliatedHallName,
-               r.year_level, r.phoneNumber AS regPhone, r.tshirt_paid, r.registeredAt
+               r.year_level, r.phoneNumber AS regPhone, r.souvenir_paid, r.registeredAt
         FROM `{SOURCE_DB}`.`admitted_students` a
         LEFT JOIN `{REG_DB}`.`cybersecurity_registrations` r ON r.id = a.id
         WHERE a.id = %s
@@ -127,15 +127,15 @@ def save_registration(rec: dict):
     cur = conn.cursor()
     cur.execute(f"""
         INSERT INTO `{REG_DB}`.`cybersecurity_registrations`
-        (id, formReferenceNo, fullName, email, programme, phoneNumber, year_level, tshirt_paid, registeredAt)
+        (id, formReferenceNo, fullName, email, programme, phoneNumber, year_level, souvenir_paid, registeredAt)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON DUPLICATE KEY UPDATE
             phoneNumber = VALUES(phoneNumber),
             year_level = VALUES(year_level),
-            tshirt_paid = VALUES(tshirt_paid),
+            souvenir_paid = VALUES(souvenir_paid),
             registeredAt = VALUES(registeredAt)
     """, (rec["id"], rec["formReferenceNo"], rec["fullName"], rec["email"],
-          rec["programme"], rec["phoneNumber"], rec["year_level"], rec["tshirt_paid"], rec["registeredAt"]))
+          rec["programme"], rec["phoneNumber"], rec["year_level"], rec["souvenir_paid"], rec["registeredAt"]))
     conn.commit()
     cur.close()
     conn.close()
@@ -196,7 +196,7 @@ async def register(
     student_id: str = Form(...),
     year_level: str = Form(...),
     phone: str = Form(""),
-    tshirt_paid: bool = Form(False)
+    souvenir_paid: bool = Form(False)
 ):
     student = get_student(student_id)
     if not student:
@@ -218,7 +218,7 @@ async def register(
         "programme": student["programme"],
         "phoneNumber": phone or student["regPhone"] or student["phoneNumber"] or "",
         "year_level": year_level.strip(),
-        "tshirt_paid": tshirt_paid,
+        "souvenir_paid": souvenir_paid,
         "registeredAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
 
@@ -241,13 +241,13 @@ async def stats():
     cur = conn.cursor(dictionary=True)
     cur.execute(f"SELECT COUNT(*) as total FROM `{REG_DB}`.`cybersecurity_registrations`")
     total = cur.fetchone()["total"]
-    cur.execute(f"SELECT COUNT(*) as paid FROM `{REG_DB}`.`cybersecurity_registrations` WHERE tshirt_paid = 1")
+    cur.execute(f"SELECT COUNT(*) as paid FROM `{REG_DB}`.`cybersecurity_registrations` WHERE souvenir_paid = 1")
     paid = cur.fetchone()["paid"]
     cur.execute(f"SELECT year_level, COUNT(*) as cnt FROM `{REG_DB}`.`cybersecurity_registrations` GROUP BY year_level")
     by_year = {row["year_level"]: row["cnt"] for row in cur.fetchall()}
     cur.close()
     conn.close()
-    return {"total_registered": total, "tshirt_paid": paid, "by_year": by_year}
+    return {"total_registered": total, "souvenir_paid": paid, "by_year": by_year}
 
 
 @app.get("/health")

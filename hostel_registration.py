@@ -42,7 +42,7 @@ def init_db():
             `programme` VARCHAR(255),
             `phoneNumber` VARCHAR(50),
             `year_level` VARCHAR(50),
-            `tshirt_paid` BOOLEAN DEFAULT FALSE,
+            `souvenir_paid` BOOLEAN DEFAULT FALSE,
             `registeredAt` DATETIME
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """)
