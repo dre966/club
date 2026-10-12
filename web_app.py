@@ -161,7 +161,7 @@ async def startup():
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request, q: str = ""):
     students = search_students(q) if q else []
-    return templates.TemplateResponse("index.html", {
+    return templates.TemplateResponse(request,"index.html", {
         "request": request,
         "students": students,
         "query": q,
