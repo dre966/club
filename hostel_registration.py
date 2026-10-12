@@ -197,11 +197,11 @@ class App(tk.Tk):
         self.tree.bind("<<TreeviewSelect>>", self.on_select)
         
         # Registration form
-        form = ttk.LabelFrame(self, text="Register selected student (Hostel & Cyber Club)", padding=10)
+        form = ttk.LabelFrame(self, text="Register selected student", padding=10)
         form.pack(fill="x", padx=10, pady=(0,10))
         
         self.sel_label = ttk.Label(form, text="No student selected")
-        self.sel_label.grid(row=0, column=0, columnspan=6, sticky="w", pady=(0, 8))
+        self.sel_label.grid(row=0, column=0, columnspan=5, sticky="w", pady=(0, 8))
         
         ttk.Label(form, text="Hostel:").grid(row=1, column=0, sticky="w")
         self.hostel_var = tk.StringVar()
@@ -211,13 +211,10 @@ class App(tk.Tk):
         self.phone_var = tk.StringVar()
         ttk.Entry(form, textvariable=self.phone_var, width=22).grid(row=1, column=3, padx=8)
         
-        self.souvenirs_var = tk.BooleanVar()
-        ttk.Checkbutton(form, text="Hostel Souvenir Paid", variable=self.souvenirs_var).grid(row=1, column=4, padx=8)
-        
         self.souvenir_var = tk.BooleanVar()
-        ttk.Checkbutton(form, text="Cyber Club Souvenir Paid", variable=self.souvenir_var).grid(row=1, column=5, padx=8)
+        ttk.Checkbutton(form, text="Souvenir", variable=self.souvenir_var).grid(row=1, column=4, padx=8)
         
-        ttk.Button(form, text="Register / Update", command=self.register).grid(row=1, column=6, padx=8)
+        ttk.Button(form, text="Register / Update", command=self.register).grid(row=1, column=5, padx=8)
         
         self.selected = None
         try:
@@ -302,8 +299,8 @@ class App(tk.Tk):
         self.sel_label.config(text=f"{s['fullName']}  |  Ref: {s['formReferenceNo']}  |  {s['programme']}  |  {s.get('source','')}")
         self.phone_var.set(s.get("regPhone") or s.get("phoneNumber") or "")
         self.hostel_var.set(s.get("hostel") or s.get("hallName") or s.get("affiliatedHallName") or "")
-        self.souvenirs_var.set(bool(s.get("souvenirs_paid", False)))
-        self.souvenir_var.set(bool(s.get("souvenir_paid", False)))
+        # Use either souvenir field - if either is true, show checked
+        self.souvenir_var.set(bool(s.get("souvenirs_paid", False) or s.get("souvenir_paid", False)))
 
     def register(self):
         if not self.selected:

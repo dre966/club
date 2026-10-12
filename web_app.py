@@ -185,20 +185,23 @@ async def register(
     student_id: str = Form(...),
     hostel: str = Form(""),
     phone: str = Form(""),
-    souvenirs_paid: bool = Form(False),
-    souvenir_paid: bool = Form(False)
+    souvenir: bool = Form(False)
 ):
     student = get_student(student_id)
     if not student:
         raise HTTPException(404, "Student not found")
 
-    if not hostel.strip() and not souvenir_paid:
+    if not hostel.strip() and not souvenir:
         return templates.TemplateResponse("detail.html", {
             "request": request,
             "student": student,
-            "error": "Enter hostel or check Cyber Club souvenir",
+            "error": "Enter hostel or check Souvenir",
             "app_title": APP_TITLE
         })
+
+    # Map single souvenir checkbox to both DB fields
+    souvenir_paid = souvenir
+    souvenirs_paid = souvenir
 
     rec = {
         "id": student["id"],
@@ -210,7 +213,7 @@ async def register(
         "hostel": hostel.strip(),
         "souvenirs_paid": souvenirs_paid,
         "souvenir_paid": souvenir_paid,
-        "source": "both" if (hostel and souvenir_paid) else ("hostel" if hostel else "cyber_club"),
+        "source": "both" if (hostel and souvenir) else ("hostel" if hostel else "cyber_club"),
         "registeredAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
 
