@@ -55,7 +55,6 @@ def init_db():
             `registeredAt` DATETIME
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """)
-    # Indexes - MySQL doesn't support IF NOT EXISTS for indexes in all versions
     try:
         cur.execute("CREATE INDEX idx_fullName ON `cybersecurity_registrations`(`fullName`)")
     except Error:
@@ -145,21 +144,21 @@ def save_registration(rec: dict):
 # ---------- Lifespan ----------
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
     try:
         init_db()
         print("Database initialized")
     except Error as e:
         print(f"DB init error: {e}")
     yield
-    # Shutdown (if needed)
 
 
 # ---------- FastAPI App ----------
 app = FastAPI(title=APP_TITLE, lifespan=lifespan)
 
-# Templates
+# Templates - disable cache to avoid Jinja2 cache key issues
 templates = Jinja2Templates(directory="templates")
+# Disable template cache to prevent "unhashable type: dict" error
+templates.env.cache = {}
 
 # Static files
 os.makedirs("static", exist_ok=True)
