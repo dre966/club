@@ -74,7 +74,9 @@ def search_students(text: str):
         SELECT a.id, a.formReferenceNo, a.fullName, a.email, a.programme,
                a.phoneNumber, a.hallName, a.affiliatedHallName,
                r.hostel, r.souvenirs_paid, r.souvenir_paid, r.source,
-               r.phoneNumber AS regPhone, r.registeredAt
+               r.phoneNumber AS regPhone,
+               COALESCE(r.hostel, a.hallName, a.affiliatedHallName) AS regHostel,
+               r.registeredAt
         FROM `{SOURCE_DB}`.`admitted_students` a
         LEFT JOIN `{REG_DB}`.`{UNIFIED_TABLE}` r ON r.id = a.id
         WHERE {where_clause}
@@ -96,7 +98,9 @@ def get_student(student_id: str):
         SELECT a.id, a.formReferenceNo, a.fullName, a.email, a.programme,
                a.phoneNumber, a.hallName, a.affiliatedHallName,
                r.hostel, r.souvenirs_paid, r.souvenir_paid, r.source,
-               r.phoneNumber AS regPhone, r.registeredAt
+               r.phoneNumber AS regPhone,
+               COALESCE(r.hostel, a.hallName, a.affiliatedHallName) AS regHostel,
+               r.registeredAt
         FROM `{SOURCE_DB}`.`admitted_students` a
         LEFT JOIN `{REG_DB}`.`{UNIFIED_TABLE}` r ON r.id = a.id
         WHERE a.id = %s

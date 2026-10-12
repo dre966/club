@@ -28,12 +28,18 @@
                         <div>{{ student.regPhone or student.phoneNumber }}</div>
                     </div>
                 </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Hostel</label>
+                        <div>{{ student.regHostel or student.hallName or student.affiliatedHallName }}</div>
+                    </div>
+                </div>
                 
                 {% if student.hostel or student.souvenir_paid or student.souvenirs_paid %}
                 <div class="alert alert-success d-flex justify-content-between align-items-center mb-3">
                     <div>
                         {% if student.hostel %}
-                        <strong>Hostel:</strong> {{ student.hostel }}
+                        <strong>Registered Hostel:</strong> {{ student.hostel }}
                         {% endif %}
                         {% if student.souvenir_paid or student.souvenirs_paid %}
                         <span class="badge bg-warning text-dark ms-2"><i class="bi bi-gift"></i> Souvenir Paid</span>
@@ -68,7 +74,7 @@
                         <div class="col-md-6">
                             <label class="form-label fw-bold">Hostel</label>
                             <input type="text" name="hostel" class="form-control"
-                                   value="{{ student.hostel or '' }}"
+                                   value="{{ student.regHostel or student.hostel or student.hallName or student.affiliatedHallName or '' }}"
                                    placeholder="Enter hostel name">
                         </div>
                         <div class="col-md-6">
