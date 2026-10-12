@@ -70,19 +70,11 @@
                         <td>
                             {% if s.hostel or s.souvenir_paid %}
                             <span class="badge bg-success status-badge">
-                                {% if s.hostel %}
-                                <i class="bi bi-house"></i> {{ s.hostel }}
-                                {% if s.souvenirs_paid %}
-                                <i class="bi bi-gift"></i>
-                                {% endif %}
-                                {% endif %}
-                                {% if s.souvenir_paid %}
-                                <i class="bi bi-gift"></i> Cyber Club
-                                {% endif %}
+                                Registered
                             </span>
                             {% else %}
                             <span class="badge bg-warning text-dark status-badge">
-                                <i class="bi bi-clock"></i> Not Registered
+                                Not Registered
                             </span>
                             {% endif %}
                         </td>

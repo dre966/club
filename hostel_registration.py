@@ -282,11 +282,8 @@ class App(tk.Tk):
         self.results = {}
         
         for s in self.filtered_students:
-            status = ""
-            if s.get("hostel"):
-                status = f"✓ {s['hostel']}"
-                if s.get("souvenirs_paid"):
-                    status += " 🎁"
+            has_registration = s.get("hostel") or s.get("souvenir_paid")
+            status = "Registered" if has_registration else "Not Registered"
             iid = self.tree.insert("", "end", values=(
                 s["fullName"], s["formReferenceNo"], s["programme"],
                 s.get("regPhone") or s.get("phoneNumber") or "", status))
