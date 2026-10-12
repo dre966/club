@@ -262,7 +262,7 @@ class App(tk.Tk):
     def schedule_search(self):
         if self._job:
             self.after_cancel(self._job)
-        self._job = self.after(150, self.do_search)
+        self._job = self.after(50, self.do_search)  # Faster debounce: 50ms
 
     def focus_first_result(self):
         items = self.tree.get_children()

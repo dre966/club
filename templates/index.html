@@ -5,16 +5,13 @@
     <div class="col-12">
         <div class="card shadow-sm">
             <div class="card-body">
-                <form method="GET" class="row g-3 align-items-end">
+                <form hx-get="/" hx-trigger="input changed delay:150ms, search" hx-target="#results" class="row g-3 align-items-end">
                     <div class="col-md-8">
                         <label class="form-label fw-bold">Search Cyber Security Students</label>
                         <div class="input-group">
                             <input type="text" name="q" class="form-control form-control-lg" 
                                    placeholder="Name, Ref No, Phone, Email..." 
                                    value="{{ query }}" autofocus>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-search"></i> Search
-                            </button>
                             {% if query %}
                             <a href="/" class="btn btn-outline-secondary">Clear</a>
                             {% endif %}
@@ -45,7 +42,7 @@
 </div>
 {% endif %}
 
-<div class="card shadow-sm">
+<div id="results" class="card shadow-sm">
     <div class="card-body p-0">
         {% if students %}
         <div class="table-responsive">
@@ -74,8 +71,8 @@
                             {% if s.year_level %}
                             <span class="badge bg-success status-badge">
                                 <i class="bi bi-check-circle"></i> Year {{ s.year_level }}
-                                {% if s.tshirt_paid %}
-                                <i class="bi bi-shirt"></i>
+                                {% if s.souvenir_paid %}
+                                <i class="bi bi-gift"></i>
                                 {% endif %}
                             </span>
                             {% else %}
