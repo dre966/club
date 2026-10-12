@@ -7,16 +7,15 @@ Access: http://localhost:8000
 """
 
 import os
-import json
 import re
+from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional
 
-from fastapi import FastAPI, Request, Form, Depends, HTTPException
+from fastapi import FastAPI, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel
 import mysql.connector
 from mysql.connector import Error
 
@@ -77,7 +76,7 @@ def search_students(text: str):
     if PROGRAMME_FILTER:
         where.append("a.programme LIKE %s")
         params.append(f"%{PROGRAMME_FILTER}%")
-    
+
     for t in text.split():
         like = f"%{t}%"
         digits = re.sub(r"[\s\-+]", "", t)
@@ -88,13 +87,14 @@ def search_students(text: str):
 
     conn = get_conn()
     cur = conn.cursor(dictionary=True)
+    where_clause = " AND ".join(where) if where else "1=1"
     cur.execute(f"""
         SELECT a.id, a.formReferenceNo, a.fullName, a.email, a.programme,
                a.phoneNumber, a.hallName, a.affiliatedHallName,
                r.year_level, r.phoneNumber AS regPhone, r.tshirt_paid, r.registeredAt
         FROM `{SOURCE_DB}`.`admitted_students` a
         LEFT JOIN `{REG_DB}`.`cybersecurity_registrations` r ON r.id = a.id
-        WHERE {' AND '.join(where)}
+        WHERE {where_clause}
         ORDER BY (a.formReferenceNo = %s) DESC,
                  (a.fullName LIKE %s) DESC,
                  a.fullName
@@ -142,8 +142,21 @@ def save_registration(rec: dict):
     conn.close()
 
 
+# ---------- Lifespan ----------
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    try:
+        init_db()
+        print("Database initialized")
+    except Error as e:
+        print(f"DB init error: {e}")
+    yield
+    # Shutdown (if needed)
+
+
 # ---------- FastAPI App ----------
-app = FastAPI(title=APP_TITLE)
+app = FastAPI(title=APP_TITLE, lifespan=lifespan)
 
 # Templates
 templates = Jinja2Templates(directory="templates")
@@ -151,16 +164,6 @@ templates = Jinja2Templates(directory="templates")
 # Static files
 os.makedirs("static", exist_ok=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")
-
-
-# Initialize DB on startup
-@app.on_event("startup")
-async def startup():
-    try:
-        init_db()
-        print("Database initialized")
-    except Error as e:
-        print(f"DB init error: {e}")
 
 
 # ---------- Routes ----------
@@ -199,7 +202,7 @@ async def register(
     student = get_student(student_id)
     if not student:
         raise HTTPException(404, "Student not found")
-    
+
     if not year_level.strip():
         return templates.TemplateResponse("detail.html", {
             "request": request,
@@ -207,7 +210,7 @@ async def register(
             "error": "Year/Level is required",
             "app_title": APP_TITLE
         })
-    
+
     rec = {
         "id": student["id"],
         "formReferenceNo": student["formReferenceNo"],
@@ -219,7 +222,7 @@ async def register(
         "tshirt_paid": tshirt_paid,
         "registeredAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
-    
+
     try:
         save_registration(rec)
     except Error as e:
@@ -229,7 +232,7 @@ async def register(
             "error": f"Database error: {e}",
             "app_title": APP_TITLE
         })
-    
+
     return RedirectResponse(url=f"/student/{student_id}?saved=1", status_code=303)
 
 
