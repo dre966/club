@@ -49,7 +49,7 @@ def load_all_students():
     query = f"""
         SELECT a.id, a.formReferenceNo, a.fullName, a.email, a.programme,
                a.phoneNumber, a.hallName, a.affiliatedHallName,
-               r.hostel, r.souvenirs_paid, r.souvenir_paid, r.source,
+               r.hostel, r.souvenir_paid, r.source,
                r.phoneNumber AS regPhone, r.registeredAt
         FROM `{SOURCE_DB}`.`admitted_students` a
         LEFT JOIN `{REG_DB}`.`{UNIFIED_TABLE}` r ON r.id = a.id
@@ -74,17 +74,16 @@ def save_registration(rec):
     cur.execute(f"""
         INSERT INTO `{REG_DB}`.`{UNIFIED_TABLE}`
         (id, formReferenceNo, fullName, email, programme, phoneNumber,
-         hostel, souvenirs_paid, souvenir_paid, registeredAt, source)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+         hostel, souvenir_paid, registeredAt, source)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON DUPLICATE KEY UPDATE
             phoneNumber = VALUES(phoneNumber),
             hostel = VALUES(hostel),
-            souvenirs_paid = VALUES(souvenirs_paid),
             souvenir_paid = VALUES(souvenir_paid),
             registeredAt = VALUES(registeredAt)
     """, (rec["id"], rec["formReferenceNo"], rec["fullName"], rec["email"],
           rec["programme"], rec["phoneNumber"],
-          rec.get("hostel"), rec.get("souvenirs_paid", False), rec.get("souvenir_paid", False),
+          rec.get("hostel"), rec.get("souvenir_paid", False),
           rec["registeredAt"], rec.get("source", "hostel")))
     conn.commit()
     cur.close()
@@ -299,8 +298,7 @@ class App(tk.Tk):
         self.sel_label.config(text=f"{s['fullName']}  |  Ref: {s['formReferenceNo']}  |  {s['programme']}  |  {s.get('source','')}")
         self.phone_var.set(s.get("regPhone") or s.get("phoneNumber") or "")
         self.hostel_var.set(s.get("hostel") or s.get("hallName") or s.get("affiliatedHallName") or "")
-        # Use either souvenir field - if either is true, show checked
-        self.souvenir_var.set(bool(s.get("souvenirs_paid", False) or s.get("souvenir_paid", False)))
+        self.souvenir_var.set(bool(s.get("souvenir_paid", False)))
 
     def register(self):
         if not self.selected:
@@ -316,15 +314,11 @@ class App(tk.Tk):
         s = self.selected
         # Check if already registered for either
         has_hostel = s.get("hostel")
-        has_souvenir = s.get("souvenir_paid") or s.get("souvenirs_paid")
+        has_souvenir = s.get("souvenir_paid")
         if (has_hostel or has_souvenir) and not messagebox.askyesno(
                 "Already registered", 
                 f"{s['fullName']} already has registration. Update?"):
             return
-        
-        # Map single souvenir checkbox to both DB fields
-        souvenir_paid = souvenir
-        souvenirs_paid = souvenir
         
         rec = {
             "id": s["id"],
@@ -334,8 +328,7 @@ class App(tk.Tk):
             "programme": s["programme"],
             "phoneNumber": phone,
             "hostel": hostel,
-            "souvenirs_paid": souvenirs_paid,
-            "souvenir_paid": souvenir_paid,
+            "souvenir_paid": souvenir,
             "source": "both" if (hostel and souvenir) else ("hostel" if hostel else "cyber_club"),
             "registeredAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         }
@@ -350,22 +343,19 @@ class App(tk.Tk):
         # Update local cache immediately
         s["hostel"] = hostel
         s["regPhone"] = phone
-        s["souvenirs_paid"] = souvenirs_paid
-        s["souvenir_paid"] = souvenir_paid
+        s["souvenir_paid"] = souvenir
         s["source"] = rec["source"]
         s["registeredAt"] = rec["registeredAt"]
         
         # Refresh UI
         msg = []
         if hostel: msg.append(f"Hostel: {hostel}")
-        if souvenir_paid: msg.append("Cyber Club Souvenir")
-        if souvenirs_paid: msg.append("Hostel Souvenir")
+        if souvenir: msg.append("Souvenir")
         messagebox.showinfo("Saved", f"{rec['fullName']} - {', '.join(msg)} saved.")
         self.selected = None
         self.sel_label.config(text="No student selected")
         self.hostel_var.set("")
         self.phone_var.set("")
-        self.souvenirs_var.set(False)
         self.souvenir_var.set(False)
         self.do_search()
 

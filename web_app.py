@@ -73,7 +73,7 @@ def search_students(text: str):
     cur.execute(f"""
         SELECT a.id, a.formReferenceNo, a.fullName, a.email, a.programme,
                a.phoneNumber, a.hallName, a.affiliatedHallName,
-               r.hostel, r.souvenirs_paid, r.souvenir_paid, r.source,
+               r.hostel, r.souvenir_paid, r.source,
                r.phoneNumber AS regPhone,
                COALESCE(r.hostel, a.hallName, a.affiliatedHallName) AS regHostel,
                r.registeredAt
@@ -97,7 +97,7 @@ def get_student(student_id: str):
     cur.execute(f"""
         SELECT a.id, a.formReferenceNo, a.fullName, a.email, a.programme,
                a.phoneNumber, a.hallName, a.affiliatedHallName,
-               r.hostel, r.souvenirs_paid, r.souvenir_paid, r.source,
+               r.hostel, r.souvenir_paid, r.source,
                r.phoneNumber AS regPhone,
                COALESCE(r.hostel, a.hallName, a.affiliatedHallName) AS regHostel,
                r.registeredAt
@@ -117,17 +117,16 @@ def save_registration(rec: dict):
     cur.execute(f"""
         INSERT INTO `{REG_DB}`.`{UNIFIED_TABLE}`
         (id, formReferenceNo, fullName, email, programme, phoneNumber,
-         hostel, souvenirs_paid, souvenir_paid, registeredAt, source)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+         hostel, souvenir_paid, registeredAt, source)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON DUPLICATE KEY UPDATE
             phoneNumber = VALUES(phoneNumber),
             hostel = VALUES(hostel),
-            souvenirs_paid = VALUES(souvenirs_paid),
             souvenir_paid = VALUES(souvenir_paid),
             registeredAt = VALUES(registeredAt)
     """, (rec["id"], rec["formReferenceNo"], rec["fullName"], rec["email"],
           rec["programme"], rec["phoneNumber"],
-          rec.get("hostel"), rec.get("souvenirs_paid", False), rec.get("souvenir_paid", False),
+          rec.get("hostel"), rec.get("souvenir_paid", False),
           rec["registeredAt"], rec.get("source", "web")))
     conn.commit()
     cur.close()
@@ -203,10 +202,6 @@ async def register(
             "app_title": APP_TITLE
         })
 
-    # Map single souvenir checkbox to both DB fields
-    souvenir_paid = souvenir
-    souvenirs_paid = souvenir
-
     rec = {
         "id": student["id"],
         "formReferenceNo": student["formReferenceNo"],
@@ -215,8 +210,7 @@ async def register(
         "programme": student["programme"],
         "phoneNumber": phone or student["regPhone"] or student["phoneNumber"] or "",
         "hostel": hostel.strip(),
-        "souvenirs_paid": souvenirs_paid,
-        "souvenir_paid": souvenir_paid,
+        "souvenir_paid": souvenir,
         "source": "both" if (hostel and souvenir) else ("hostel" if hostel else "cyber_club"),
         "registeredAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
@@ -242,13 +236,11 @@ async def stats():
     total = cur.fetchone()["total"]
     cur.execute(f"SELECT COUNT(*) as hostel FROM `{REG_DB}`.`{UNIFIED_TABLE}` WHERE hostel IS NOT NULL AND hostel != ''")
     hostel = cur.fetchone()["hostel"]
-    cur.execute(f"SELECT COUNT(*) as souvenirs FROM `{REG_DB}`.`{UNIFIED_TABLE}` WHERE souvenirs_paid = 1")
+    cur.execute(f"SELECT COUNT(*) as souvenirs FROM `{REG_DB}`.`{UNIFIED_TABLE}` WHERE souvenir_paid = 1")
     souvenirs = cur.fetchone()["souvenirs"]
-    cur.execute(f"SELECT COUNT(*) as cyber FROM `{REG_DB}`.`{UNIFIED_TABLE}` WHERE souvenir_paid = 1")
-    cyber = cur.fetchone()["cyber"]
     cur.close()
     conn.close()
-    return {"total_registered": total, "hostel": hostel, "souvenirs_paid": souvenirs, "souvenir_paid": cyber}
+    return {"total_registered": total, "hostel": hostel, "souvenir_paid": souvenirs}
 
 
 @app.get("/health")
